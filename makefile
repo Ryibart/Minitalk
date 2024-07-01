@@ -6,7 +6,7 @@
 #    By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/06/26 18:30:16 by rtammi            #+#    #+#              #
-#    Updated: 2024/06/26 20:48:24 by rtammi           ###   ########.fr        #
+#    Updated: 2024/07/01 15:47:44 by rtammi           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -21,10 +21,13 @@ RM					= rm -f
 SERVER				= server
 CLIENT				= client
 
-SERVER_SRCS			= sources/server.c
+SERVER_SRCS			= 	sources/server.c \
+						sources/utilities.c
+
 SERVER_OBJS			= $(SERVER_SRCS:.c=.o)
 
-CLIENT_SRCS			= sources/client.c
+CLIENT_SRCS			= 	sources/client.c	\
+						sources/utilities.c
 CLIENT_OBJS			= $(CLIENT_SRCS:.c=.o)
 
 SERVER_BONUS 		= server_bonus
@@ -36,39 +39,39 @@ SERVER_BONUS_OBJS 	= $(SERVER_BONUS_SRCS:.c=.o)
 CLIENT_BONUS_SRCS 	= sources_bonus/client_bonus.c
 CLIENT_BONUS_OBJS 	= $(CLIENT_BONUS_SRCS:.c=.o)
 
-DEPS				= $(SERVER_SRCS:.c=.d) $(CLIENT_SRCS:.c=.d)
+DEPS				= $(SERVER_OBJS:.o=.d) $(CLIENT_OBJS:.o=.d)  $(SERVER_BONUS_OBJS:.o=.d) $(CLIENT_BONUS_OBJS:.o=.d)
 
-all:
-	$(SERVER) $(CLIENT)
+all: $(SERVER) $(CLIENT)
 
 $(SERVER): $(SERVER_OBJS)
-	$(CC) $(CFLAGS) $(DEPSFLAGS) $(SERVER_OBJS) -o server
+	$(CC) $(CFLAGS) $(SERVER_OBJS) -o $@
 
 $(CLIENT): $(CLIENT_OBJS)
-	$(CC) $(CFLAGS) $(DEPSFLAGS) $(CLIENT_OBJS) -o client
+	$(CC) $(CFLAGS) $(CLIENT_OBJS) -o $@
 
 
 $(SERVER_BONUS): $(SERVER_BONUS_OBJS)
-	$(CC) $(CFLAGS) $(DEPSFLAGS) $(SERVER_BONUS_OBJS) -o server_bonus
+	$(CC) $(CFLAGS) $(SERVER_BONUS_OBJS) -o $@
 
 $(CLIENT_BONUS): $(CLIENT_BONUS_OBJS)
-	$(CC) $(CFLAGS) $(DEPSFLAGS) $(CLIENT_BONUS_OBJS) -o client_bonus
+	$(CC) $(CFLAGS) $(CLIENT_BONUS_OBJS) -o $@
+
+%.o: %.c
+	$(CC) $(CFLAGS) $(DEPSFLAGS) -c $< -o $@
 
 -include $(DEPS)
 
 clean:
-	$(RM) $(SERVER_OBJS) $(CLIENT_OBJS) $(DEPS)
-	$(RM) $(SERVER_BONUS_OBJS) $(CLIENT_BONUS_OBJS) $(DEPS)
+	$(RM) $(SERVER_OBJS) $(CLIENT_OBJS) $(SERVER_BONUS_OBJS) $(CLIENT_BONUS_OBJS) $(DEPS)
 
 fclean: clean
-	$(RM) $(SERVER) $(CLIENT)
-	$(RM) $(SERVER_BONUS) $(CLIENT_BONUS)
+	$(RM) $(SERVER) $(CLIENT) $(SERVER_BONUS) $(CLIENT_BONUS)
 	
 re: fclean all
 
 redeps:
 	touch $(DEPS)
-	make
+	$(MAKE)
 
 bonus: $(SERVER_BONUS) $(CLIENT_BONUS)
 

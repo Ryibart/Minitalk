@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:31:12 by rtammi            #+#    #+#             */
-/*   Updated: 2024/06/26 20:51:01 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/07/01 17:57:05 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,10 +16,20 @@
 // minitalk_itoa should handle PID_MAX error and negative numbers?
 // consider making strtol instead of atoi?
 
+static size_t	minitalk_strlen(const char *s)
+{
+	size_t	i;
+
+	i = 0;
+	while (s[i] != '\0')
+		i++;
+	return (i);
+}
+
 void	error_handler(char *error_message)
 {
 	write(2, "Error: ", 7);
-	write(2, error_message, ft_strlen(error_message));
+	write(2, error_message, minitalk_strlen(error_message));
 	write(2, "\n", 1);
 	exit(1);
 }
@@ -27,64 +37,39 @@ void	error_handler(char *error_message)
 int	minitalk_atoi(const char *str)
 {
 	long	result;
-	int		sign;
 	long	temp;
 
 	result = 0;
-	sign = 1;
 	while (*str == 32 || (*str >= 9 && *str <= 13))
 		str++;
-	if (*str == '+' || *str == '-')
-		if (*str++ == '-')
-			sign = -1;
 	while (*str >= '0' && *str <= '9')
 	{
 		temp = result;
 		result = (result * 10) + (*str++ - '0');
-		if (temp > result && sign == 1)
-			return (-1);
-		else if (temp > result && sign == -1)
-			return (0);
+		if (temp > result)
+			error_handler("Invalid PID, minitalk_atoi overflow");
 	}
-	return ((int)result * sign);
+	return ((int)result);
 }
 
 
 
-int	minitalk_print_pid(int long nbr)
+void	minitalk_print_pid(int long nbr)
 {
 	char	*str;
-	int		len;
 
-	if (nbr > INT_MAX || nbr < INT_MIN)
-		return (-1);
-	str = minitalk_itoa(nbr);
+	str = pid_itoa(nbr);
 	if (!str)
 	{
 		free(str);
-		return (-1);
+		error_handler("PID printing failed");
 	}
-	len = 0;
-	while (str[len])
+	if (write(1, str, minitalk_strlen(str)) == -1)
 	{
-		if (write(1, &str[len], 1) == -1)
-		{
-			free(str);
-			return (-1);
-		}
-		len++;
+		free(str);
+		error_handler("PID printing failed");
 	}
 	free(str);
-	return (0);
-}
-
-static int	ft_absolute_value(int n)
-{
-	if (n == -2147483648)
-		return (-(n + 1) + 1);
-	if (n < 0)
-		return (-n);
-	return (n);
 }
 
 static int	ft_digit_count(int n)
@@ -94,8 +79,6 @@ static int	ft_digit_count(int n)
 
 	count = 1;
 	temp = n;
-	if (n < 0)
-		count = 2;
 	while (temp / 10 != 0)
 	{
 		temp /= 10;
@@ -105,27 +88,24 @@ static int	ft_digit_count(int n)
 }
 
 
-char	*minitalk_itoa(int n)
+char	*pid_itoa(int n)
 {
 	int				len;
-	unsigned int	abs_n;
+	unsigned int	nbr;
 	char			*str;
 
+	nbr = n;
 	len = ft_digit_count(n);
-	abs_n = ft_absolute_value(n);
 	str = (char *)malloc(sizeof(char) * (len + 1));
 	if (!str)
-		return (0);
+		return (NULL);
 	str[len] = '\0';
 	len--;
 	while (len >= 0)
 	{
-		str[len] = (abs_n % 10) + '0';
-		abs_n /= 10;
+		str[len] = (nbr % 10) + '0';
+		nbr /= 10;
 		len--;
 	}
-	if (n < 0)
-		str[0] = '-';
 	return (str);
 }
-
