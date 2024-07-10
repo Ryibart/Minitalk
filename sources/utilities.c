@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:31:12 by rtammi            #+#    #+#             */
-/*   Updated: 2024/07/01 17:57:05 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/07/10 11:16:33 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,7 +47,7 @@ int	minitalk_atoi(const char *str)
 		temp = result;
 		result = (result * 10) + (*str++ - '0');
 		if (temp > result)
-			error_handler("Invalid PID, minitalk_atoi overflow");
+			error_handler("Invalid PID (overflow)");
 	}
 	return ((int)result);
 }

@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:30:02 by rtammi            #+#    #+#             */
-/*   Updated: 2024/07/01 17:41:38 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/07/08 16:52:19 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,10 +27,10 @@ void	args_check(int argc, char **argv)
 		i++;
 	}
 	if (*argv[2] == 0)
-		error_handler("Invalid message (empty), but why?");
+		error_handler("Invalid message (empty)");
 }
 
-void	send_msg(__pid_t server_pid, char *msg)
+void	send_message(__pid_t server_pid, char *msg)
 {
 	unsigned char	c;
 	int				bits;
@@ -51,7 +51,7 @@ void	send_msg(__pid_t server_pid, char *msg)
 				//printf("sending SIGUSR2\n");
 				kill(server_pid, SIGUSR2);
 			}
-			usleep(50);
+			usleep(300);
 			c <<= 1;
 		}
 		msg++;
@@ -83,17 +83,17 @@ void	signal_config(void)
 int main(int argc, char **argv)
 {
 	__pid_t	server_pid;
-	__pid_t	client_pid;
+	// __pid_t	client_pid;
 
 	args_check(argc, argv);
-	client_pid = getpid();
-	if  (client_pid < 0)
-		error_handler("Failed to get client PID");
+	// client_pid = getpid();
+	// if  (client_pid < 0)
+	// 	error_handler("Failed to get client PID");
 	server_pid = minitalk_atoi(argv[1]);
-	minitalk_print_pid(client_pid);
-	write(1, " Is client PID\n", 16);
+	// minitalk_print_pid(client_pid);
+	// write(1, " Is client PID\n", 16);
 	signal_config();
-	send_msg(server_pid, argv[2]);
+	send_message(server_pid, argv[2]);
 	while (1)
 		pause();
 	return (0);	

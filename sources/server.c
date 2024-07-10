@@ -6,24 +6,24 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:30:05 by rtammi            #+#    #+#             */
-/*   Updated: 2024/07/01 17:41:36 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/07/10 11:20:12 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/minitalk.h"
 #include <stdio.h>
 
-void sigusr_handler(int signum, siginfo_t *info, void *context)
+void sigusr_handler(int signum, siginfo_t *info, void *ucontent)
 {
 	static char	c = 0;
 	static int	bit_iter = 7;
 	
-	(void)context;
+	(void)ucontent;
 	//printf("Signal handler triggered: signum=%d\n", signum);
 	if (signum == SIGUSR1)
 		c |= (1 << bit_iter);
-	else if (signum == SIGUSR2)
-		c &= ~(1 << bit_iter);
+	// else if (signum == SIGUSR2)
+	// 	c &= ~(1 << bit_iter);
 	//printf("Current character: %c, bit_iter: %d\n", c, bit_iter);
 	bit_iter--;
 	if (bit_iter < 0)
