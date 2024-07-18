@@ -6,67 +6,78 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:30:05 by rtammi            #+#    #+#             */
-/*   Updated: 2024/07/10 11:20:12 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/07/18 19:31:16 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/minitalk.h"
-#include <stdio.h>
 
-void sigusr_handler(int signum, siginfo_t *info, void *ucontent)
+static volatile sig_atomic_t	g_is_processing_message = false;
+// static volatile __pid_t			current_client_pid = 0;
+
+void	sigusr_handler(int signum, siginfo_t *info, void *ucontext)
 {
-	static char	c = 0;
-	static int	bit_iter = 7;
-	
-	(void)ucontent;
-	//printf("Signal handler triggered: signum=%d\n", signum);
+	static char						c = 0;
+	static int						bit_iter = 7;
+	static volatile __pid_t			current_client_pid = 0;
+	// static volatile sig_atomic_t	g_is_processing_message = false
+
+	(void)ucontext;
+	if (g_is_processing_message == true && current_client_pid != info->si_pid)
+	{
+		if (kill(info->si_pid, SIGUSR2) == -1)
+			error_handler("Signal sending failed.");
+		error_handler("Simultaneous client conflict, server aborted");
+	}
+	if (g_is_processing_message == false)
+	{
+		current_client_pid = info->si_pid;
+		g_is_processing_message = true;
+	}
 	if (signum == SIGUSR1)
 		c |= (1 << bit_iter);
-	// else if (signum == SIGUSR2)
-	// 	c &= ~(1 << bit_iter);
-	//printf("Current character: %c, bit_iter: %d\n", c, bit_iter);
 	bit_iter--;
 	if (bit_iter < 0)
 	{
-		//printf("Received character: %c\n", c);
 		write(1, &c, 1);
 		bit_iter = 7;
-		c = 0;
-		if (kill(info->si_pid, SIGUSR1) == -1)
+		if (kill(info->si_pid, SIGUSR2) == -1)
 			error_handler("Signal sending failed.");
+		if (c == '\0')
+		{
+			g_is_processing_message = false;
+			current_client_pid = 0;
+		}
+		c = 0;
 	}
-	else if (kill(info->si_pid, SIGUSR2) == -1)
+	else if (kill(info->si_pid, SIGUSR1) == -1)
 		error_handler("Signal sending failed.");
 }
 
 void	signal_config(void)
 {
-	struct	sigaction	sa_newsignal;
-	
+	struct sigaction	sa_newsignal;
+
 	sa_newsignal.sa_sigaction = &sigusr_handler;
 	sa_newsignal.sa_flags = SA_SIGINFO;
- 	sigemptyset(&sa_newsignal.sa_mask);
-	//printf("Configuring signal handlers...\n");
+	sigemptyset(&sa_newsignal.sa_mask);
 	if (sigaction(SIGUSR1, &sa_newsignal, NULL) == -1)
-		error_handler("SIGSUR1 behavior didn't change.");
+		error_handler("SIGUSR1 behavior didn't change.");
 	if (sigaction(SIGUSR2, &sa_newsignal, NULL) == -1)
-		error_handler("SIGSUR2 behavior didn't change.");
+		error_handler("SIGUSR2 behavior didn't change.");
 }
 
-int main(void)
+int	main(void)
 {
 	__pid_t	pid;
 
 	pid = getpid();
-	if  (pid < 0)
+	if (pid < 0)
 		error_handler("Failed to get PID");
 	minitalk_print_pid(pid);
 	write(1, " is server PID\n", 16);
 	signal_config();
 	while (1)
-	{
-		//printf("Server is waiting for signals...\n");
 		pause();
-	}
-	return (0);	
-	}
+	return (0);
+}
