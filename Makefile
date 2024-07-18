@@ -6,30 +6,30 @@
 #    By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/06/26 18:30:16 by rtammi            #+#    #+#              #
-#    Updated: 2024/07/18 12:22:40 by rtammi           ###   ########.fr        #
+#    Updated: 2024/07/18 19:46:11 by rtammi           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 # Compiler and Flags
-CC              = cc
-CFLAGS          += -Wall -Wextra -Werror
-DEPSFLAGS       += -MMD -MP
-ECHOFLAG		+= -e
+CC              := cc
+CFLAGS          := -Wall -Wextra -Werror
+DEPSFLAGS       := -MMD -MP
+ECHOFLAG		:= -e
 
 # Clean Command
-RM              = rm -f
+RM              := rm -f
 
 # Target Executables
-SERVER          = server
-CLIENT          = client
-SERVER_BONUS    = server_bonus
-CLIENT_BONUS    = client_bonus
+SERVER          := server
+CLIENT          := client
+SERVER_BONUS    := server_bonus
+CLIENT_BONUS    := client_bonus
 
 # Source Files
-SERVER_SRCS     = sources/server.c sources/utilities.c sources/print_pid.c sources/utilities/minitalk_realloc.c
-CLIENT_SRCS     = sources/client.c sources/utilities.c sources/print_pid.c
-SERVER_BONUS_SRCS = sources_bonus/server_bonus.c
-CLIENT_BONUS_SRCS = sources_bonus/client_bonus.c
+SERVER_SRCS     := sources/server.c sources/utilities.c sources/print_pid.c
+CLIENT_SRCS     := sources/client.c sources/utilities.c sources/print_pid.c
+SERVER_BONUS_SRCS := sources_bonus/server_bonus.c
+CLIENT_BONUS_SRCS := sources_bonus/client_bonus.c
 
 # Object Files
 SERVER_OBJS     = $(SERVER_SRCS:.c=.o)
