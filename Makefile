@@ -6,7 +6,7 @@
 #    By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/06/26 18:30:16 by rtammi            #+#    #+#              #
-#    Updated: 2024/07/18 19:46:11 by rtammi           ###   ########.fr        #
+#    Updated: 2024/08/29 14:35:02 by rtammi           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,7 +14,7 @@
 CC              := cc
 CFLAGS          := -Wall -Wextra -Werror
 DEPSFLAGS       := -MMD -MP
-ECHOFLAG		:= -e
+ECHOFLAG		:= 
 
 # Clean Command
 RM              := rm -f

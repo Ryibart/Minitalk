@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:59:26 by rtammi            #+#    #+#             */
-/*   Updated: 2024/07/18 19:39:34 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/08/29 17:22:33 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,17 +54,7 @@ void	send_message(__pid_t server_pid, char *msg)
 		}
 		msg++;
 	}
-	c = '\0';
-	bits = 8;
-	while (bits--)
-	{
-		if (c & 0b10000000)
-			kill(server_pid, SIGUSR1);
-		else
-			kill(server_pid, SIGUSR2);
-		usleep(2000);
-		c <<= 1;
-	}
+	send_nullpointer(server_pid);
 }
 
 void	sigusr_recieved(int signum, siginfo_t *info, void *ucontext)
@@ -78,7 +68,7 @@ void	sigusr_recieved(int signum, siginfo_t *info, void *ucontext)
 	}
 	if (signum == SIGUSR2 && g_message_status == MESSAGE_FAILED_FALSE)
 	{
-		write(1, "Failed to send message (server not receiving)\n", 46);
+		error_handler("Failed to send message (server not receiving)");
 		g_message_status = MESSAGE_FAILED_TRUE;
 	}
 }
@@ -104,7 +94,8 @@ int	main(int argc, char **argv)
 	server_pid = minitalk_atoi(argv[1]);
 	signal_config();
 	send_message(server_pid, argv[2]);
-	while ((g_message_status == MESSAGE_RECEIVED_FALSE) || (g_message_status == MESSAGE_FAILED_FALSE))
+	while ((g_message_status == MESSAGE_RECEIVED_FALSE)
+		|| (g_message_status == MESSAGE_FAILED_FALSE))
 		pause();
 	return (0);
 }

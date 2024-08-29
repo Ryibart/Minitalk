@@ -6,11 +6,29 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:31:12 by rtammi            #+#    #+#             */
-/*   Updated: 2024/07/18 15:11:12 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/08/29 14:32:40 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/minitalk.h"
+
+void	send_nullpointer(__pid_t server_pid)
+{
+	unsigned char	c;
+	int				bits;
+
+	c = '\0';
+	bits = 8;
+	while (bits--)
+	{
+		if (c & 0b10000000)
+			kill(server_pid, SIGUSR1);
+		else
+			kill(server_pid, SIGUSR2);
+		usleep(2000);
+		c <<= 1;
+	}
+}
 
 size_t	minitalk_strlen(const char *s)
 {

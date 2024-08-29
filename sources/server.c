@@ -6,24 +6,17 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:30:05 by rtammi            #+#    #+#             */
-/*   Updated: 2024/07/18 19:31:16 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/08/29 17:24:02 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/minitalk.h"
 
 static volatile sig_atomic_t	g_is_processing_message = false;
-// static volatile __pid_t			current_client_pid = 0;
 
-void	sigusr_handler(int signum, siginfo_t *info, void *ucontext)
+void	check_message(siginfo_t *info, volatile __pid_t *current_client_pid)
 {
-	static char						c = 0;
-	static int						bit_iter = 7;
-	static volatile __pid_t			current_client_pid = 0;
-	// static volatile sig_atomic_t	g_is_processing_message = false
-
-	(void)ucontext;
-	if (g_is_processing_message == true && current_client_pid != info->si_pid)
+	if (g_is_processing_message == true && *current_client_pid != info->si_pid)
 	{
 		if (kill(info->si_pid, SIGUSR2) == -1)
 			error_handler("Signal sending failed.");
@@ -31,9 +24,19 @@ void	sigusr_handler(int signum, siginfo_t *info, void *ucontext)
 	}
 	if (g_is_processing_message == false)
 	{
-		current_client_pid = info->si_pid;
+		*current_client_pid = info->si_pid;
 		g_is_processing_message = true;
 	}
+}
+
+void	sigusr_handler(int signum, siginfo_t *info, void *ucontext)
+{
+	static char						c = 0;
+	static int						bit_iter = 7;
+	static volatile __pid_t			current_client_pid = 0;
+
+	(void)ucontext;
+	check_message(info, &current_client_pid);
 	if (signum == SIGUSR1)
 		c |= (1 << bit_iter);
 	bit_iter--;
