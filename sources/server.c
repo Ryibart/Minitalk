@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:30:05 by rtammi            #+#    #+#             */
-/*   Updated: 2024/08/29 17:24:02 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/08/30 15:06:30 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,30 +31,56 @@ void	check_message(siginfo_t *info, volatile __pid_t *current_client_pid)
 
 void	sigusr_handler(int signum, siginfo_t *info, void *ucontext)
 {
-	static char						c = 0;
+	static char						*buffer = NULL;
+	static size_t					buffer_index = 0;
+	static size_t					message_length = 0;
 	static int						bit_iter = 7;
 	static volatile __pid_t			current_client_pid = 0;
+	static int						receiving_length = 1;
 
 	(void)ucontext;
 	check_message(info, &current_client_pid);
-	if (signum == SIGUSR1)
-		c |= (1 << bit_iter);
-	bit_iter--;
-	if (bit_iter < 0)
+	if (receiving_length)
 	{
-		write(1, &c, 1);
-		bit_iter = 7;
-		if (kill(info->si_pid, SIGUSR2) == -1)
-			error_handler("Signal sending failed.");
-		if (c == '\0')
+		message_length |= (signum == SIGUSR1) << bit_iter;
+		if (bit_iter == 0)
 		{
-			g_is_processing_message = false;
-			current_client_pid = 0;
+			receiving_length = 0;
+			bit_iter = 7;
+			buffer = (char *)malloc(message_length + 1);
+			if (!buffer)
+				error_handler("Buffer allocation failed");
+			buffer_index = 0;
 		}
-		c = 0;
+		else
+			bit_iter--;
 	}
-	else if (kill(info->si_pid, SIGUSR1) == -1)
-		error_handler("Signal sending failed.");
+	else
+	{
+		buffer[buffer_index] |= (signum == SIGUSR1) << bit_iter;
+		if (bit_iter == 0)
+		{
+			if (buffer[buffer_index] == '\0')
+			{
+				write(1, buffer, message_length);
+				write(1, "\n", 1);
+				free(buffer);
+				buffer = NULL;
+				message_length = 0;
+				receiving_length = 1;
+				if (kill(current_client_pid, SIGUSR1) == -1)
+					error_handler("Signal sending failed.");
+				usleep(100);
+				g_is_processing_message = false;
+				current_client_pid = 0;
+			}
+			else
+				buffer_index++;
+			bit_iter = 7;
+		}
+		else
+			bit_iter--;
+	}
 }
 
 void	signal_config(void)
