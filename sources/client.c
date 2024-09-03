@@ -6,13 +6,12 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:59:26 by rtammi            #+#    #+#             */
-/*   Updated: 2024/08/30 15:08:25 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/03 18:23:15 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/minitalk.h"
-
-static volatile sig_atomic_t	g_message_status = false;
+#include <stdio.h>
 
 void	args_check(int argc, char **argv)
 {
@@ -36,24 +35,28 @@ void	send_length(__pid_t server_pid, size_t length)
 {
 	unsigned char	byte;
 	int				bits;
+	int				i;
 
-	while (length > 0)
+	printf("Client: Sending message length: %zu\n", length);
+	i = sizeof(size_t) - 1;
+	while (i >= 0)
 	{
-		byte = (unsigned char)length;
+		byte = (length >> (i * 8)) & 0xFF;
+		printf("Client: Sending byte: 0x%02X\n", byte);
 		bits = 8;
 		while (bits--)
 		{
-			if (byte & 0b10000000)
+			if (byte & 0x80)
 			{
 				if (kill(server_pid, SIGUSR1) == -1)
 					error_handler("Signal sending failed (invalid server)");
 			}
 			else if (kill(server_pid, SIGUSR2) == -1)
 				error_handler("Signal sending failed (invalid server)");
-			usleep(100);
+			usleep(800);
 			byte <<= 1;
 		}
-		length >>= 8;
+		i--;
 	}
 }
 
@@ -75,23 +78,24 @@ void	send_message(__pid_t server_pid, char *msg)
 			}
 			else if (kill(server_pid, SIGUSR2) == -1)
 				error_handler("Signal sending failed (invalid server)");
-			usleep(100);
+			usleep(800);
 			c <<= 1;
 		}
 		msg++;
 	}
-	send_nullpointer(server_pid);
 }
 
 void	sigusr_recieved(int signum, siginfo_t *info, void *ucontext)
 {
 	(void)ucontext;
 	(void)info;
-	if (signum == SIGUSR1 && !g_message_status)
+	if (signum == SIGUSR1)
 	{
 		write(1, "Message received by server.\n", 29);
-		g_message_status = true;
+		exit(0);
 	}
+	if (signum == SIGUSR2)
+		error_handler("Server failed");
 }
 
 void	signal_config(void)
@@ -118,7 +122,7 @@ int	main(int argc, char **argv)
 	signal_config();
 	send_length(server_pid, message_len);
 	send_message(server_pid, argv[2]);
-	while (g_message_status == false)
+	while (1)
 		pause();
 	return (0);
 }

@@ -6,11 +6,12 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:30:05 by rtammi            #+#    #+#             */
-/*   Updated: 2024/08/30 15:06:30 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/03 18:20:15 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/minitalk.h"
+#include <stdio.h>
 
 static volatile sig_atomic_t	g_is_processing_message = false;
 
@@ -36,50 +37,51 @@ void	sigusr_handler(int signum, siginfo_t *info, void *ucontext)
 	static size_t					message_length = 0;
 	static int						bit_iter = 7;
 	static volatile __pid_t			current_client_pid = 0;
-	static int						receiving_length = 1;
+	static int						remaining_bits = sizeof(size_t) * 8;
 
 	(void)ucontext;
 	check_message(info, &current_client_pid);
-	if (receiving_length)
+	if (remaining_bits > 0)
 	{
-		message_length |= (signum == SIGUSR1) << bit_iter;
-		if (bit_iter == 0)
+		message_length |= (signum == SIGUSR1) << (remaining_bits -1);
+		printf("Server: Receiving bit: %d, message_length: %zu, bit_iter: %d, remaining_bits: %d\n", (signum == SIGUSR1), message_length, bit_iter, remaining_bits);
+		remaining_bits--;
+		if (remaining_bits == 0)
 		{
-			receiving_length = 0;
-			bit_iter = 7;
 			buffer = (char *)malloc(message_length + 1);
 			if (!buffer)
 				error_handler("Buffer allocation failed");
+			minitalk_memset(buffer, 0, message_length + 1);
 			buffer_index = 0;
+			printf("Server: Allocated buffer of size: %zu\n", message_length);
 		}
-		else
-			bit_iter--;
 	}
 	else
 	{
 		buffer[buffer_index] |= (signum == SIGUSR1) << bit_iter;
 		if (bit_iter == 0)
 		{
-			if (buffer[buffer_index] == '\0')
-			{
-				write(1, buffer, message_length);
-				write(1, "\n", 1);
-				free(buffer);
-				buffer = NULL;
-				message_length = 0;
-				receiving_length = 1;
-				if (kill(current_client_pid, SIGUSR1) == -1)
-					error_handler("Signal sending failed.");
-				usleep(100);
-				g_is_processing_message = false;
-				current_client_pid = 0;
-			}
-			else
-				buffer_index++;
+			buffer_index++;
 			bit_iter = 7;
 		}
 		else
 			bit_iter--;
+
+		if (buffer_index == message_length)
+		{
+			buffer[buffer_index] = '\0';
+			write(1, buffer, message_length);
+			write(1, "\n", 1);
+			free(buffer);
+			buffer = NULL;
+			message_length = 0;
+			remaining_bits = sizeof(size_t) * 8;
+			if (kill(current_client_pid, SIGUSR1) == -1)
+				error_handler("Signal sending failed.");
+			usleep(200);
+			g_is_processing_message = false;
+			current_client_pid = 0;
+		}
 	}
 }
 

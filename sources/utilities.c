@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:31:12 by rtammi            #+#    #+#             */
-/*   Updated: 2024/08/29 14:32:40 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/03 14:37:49 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,4 +64,21 @@ int	minitalk_atoi(const char *str)
 			error_handler("Invalid PID (overflow)");
 	}
 	return ((int)result);
+}
+
+void	*minitalk_memset(void *b, int c, size_t n)
+{
+	size_t			i;
+	unsigned char	*u_b;
+	unsigned char	u_c;
+
+	i = 0;
+	u_b = (unsigned char *)b;
+	u_c = (unsigned char)c;
+	while (i < n)
+	{
+		u_b[i] = u_c;
+		i++;
+	}
+	return (b);
 }
