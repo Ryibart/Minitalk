@@ -6,109 +6,117 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:30:05 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/03 18:20:15 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/06 13:27:36 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../includes/minitalk.h"
-#include <stdio.h>
+#include "minitalk.h"
 
-static volatile sig_atomic_t	g_is_processing_message = false;
+volatile bool	g_is_processing_message = false;
 
-void	check_message(siginfo_t *info, volatile __pid_t *current_client_pid)
+int	check_message(siginfo_t *info, __pid_t *current_client_pid)
 {
+	if (DEBUG == ON)
+		printf("Checking message\n");
 	if (g_is_processing_message == true && *current_client_pid != info->si_pid)
 	{
-		if (kill(info->si_pid, SIGUSR2) == -1)
-			error_handler("Signal sending failed.");
-		error_handler("Simultaneous client conflict, server aborted");
+		if (DEBUG == ON)
+			printf("Server sent busy\n");
+		send_signal(*current_client_pid, SIGUSR2, 100, SERVER);
+		return (-1);
 	}
-	if (g_is_processing_message == false)
+	else if (g_is_processing_message == false)
 	{
+		if (DEBUG == ON)
+			printf("SERVER SENT OPEN\n");
 		*current_client_pid = info->si_pid;
 		g_is_processing_message = true;
+		send_signal(*current_client_pid, SIGUSR1, 1000, SERVER);
+		return (-1);
 	}
+	return (1);
 }
 
-void	sigusr_handler(int signum, siginfo_t *info, void *ucontext)
+int	process_message(t_message *msg, __pid_t current_client_pid)
 {
-	static char						*buffer = NULL;
-	static size_t					buffer_index = 0;
-	static size_t					message_length = 0;
-	static int						bit_iter = 7;
-	static volatile __pid_t			current_client_pid = 0;
-	static int						remaining_bits = sizeof(size_t) * 8;
-
-	(void)ucontext;
-	check_message(info, &current_client_pid);
-	if (remaining_bits > 0)
+	if (DEBUG == ON)
+		printf("Processing message\n");
+	append_to_buffer(msg);
+	if (msg->current_char == '\0')
 	{
-		message_length |= (signum == SIGUSR1) << (remaining_bits -1);
-		printf("Server: Receiving bit: %d, message_length: %zu, bit_iter: %d, remaining_bits: %d\n", (signum == SIGUSR1), message_length, bit_iter, remaining_bits);
-		remaining_bits--;
-		if (remaining_bits == 0)
+		if (write(1, msg->buffer, msg->buffer_index) < 0
+			|| write(1, "\n", 1) < 0)
 		{
-			buffer = (char *)malloc(message_length + 1);
-			if (!buffer)
-				error_handler("Buffer allocation failed");
-			minitalk_memset(buffer, 0, message_length + 1);
-			buffer_index = 0;
-			printf("Server: Allocated buffer of size: %zu\n", message_length);
+			reset_message(msg);
+			error_handler("Printing message failed");
 		}
+		reset_message(msg);
+		send_signal(current_client_pid, SIGUSR1, 300, SERVER);
+		return (true);
 	}
-	else
-	{
-		buffer[buffer_index] |= (signum == SIGUSR1) << bit_iter;
-		if (bit_iter == 0)
-		{
-			buffer_index++;
-			bit_iter = 7;
-		}
-		else
-			bit_iter--;
+	return (false);
+}
 
-		if (buffer_index == message_length)
+int	print_message(int signum, t_message *msg, __pid_t current_client_pid)
+{
+	int	result;
+
+	result = false;
+	if (DEBUG == ON)
+		printf("In print_message\n");
+	if (signum == SIGUSR1)
+		msg->current_char |= (1 << msg->bit_iter);
+	msg->bit_iter--;
+	if (msg->bit_iter < 0)
+	{
+		msg->bit_iter = 7;
+		result = process_message(msg, current_client_pid);
+		msg->current_char = 0;
+	}
+	if (result == false)
+		send_signal(current_client_pid, SIGUSR1, 300, SERVER);
+	return (result);
+}
+
+void	sigusr_handler(int signum, siginfo_t *info, void *context)
+{
+	static __pid_t		current_client_pid = 0;
+	static t_message	msg = {NULL, 0, 0, 7, 0};
+
+	(void)context;
+	if (DEBUG == ON)
+		printf("In sigusr_handler\n");
+	if (check_message(info, &current_client_pid) == -1)
+		return ;
+	if (g_is_processing_message == true)
+	{
+		if (print_message(signum, &msg, current_client_pid) == true)
 		{
-			buffer[buffer_index] = '\0';
-			write(1, buffer, message_length);
-			write(1, "\n", 1);
-			free(buffer);
-			buffer = NULL;
-			message_length = 0;
-			remaining_bits = sizeof(size_t) * 8;
-			if (kill(current_client_pid, SIGUSR1) == -1)
-				error_handler("Signal sending failed.");
-			usleep(200);
-			g_is_processing_message = false;
+			send_signal(current_client_pid, SIGUSR1, 500, SERVER);
 			current_client_pid = 0;
+			g_is_processing_message = false;
 		}
 	}
-}
-
-void	signal_config(void)
-{
-	struct sigaction	sa_newsignal;
-
-	sa_newsignal.sa_sigaction = &sigusr_handler;
-	sa_newsignal.sa_flags = SA_SIGINFO;
-	sigemptyset(&sa_newsignal.sa_mask);
-	if (sigaction(SIGUSR1, &sa_newsignal, NULL) == -1)
-		error_handler("SIGUSR1 behavior didn't change.");
-	if (sigaction(SIGUSR2, &sa_newsignal, NULL) == -1)
-		error_handler("SIGUSR2 behavior didn't change.");
 }
 
 int	main(void)
 {
 	__pid_t	pid;
+	int		i = 0;
 
 	pid = getpid();
 	if (pid < 0)
 		error_handler("Failed to get PID");
 	minitalk_print_pid(pid);
 	write(1, " is server PID\n", 16);
-	signal_config();
+	if (DEBUG == ON)
+		printf("Setting handler\n");
+	signal_config(sigusr_handler);
 	while (1)
+	{
+		if (DEBUG == ON)
+			printf("Pause nro %u\n", i++);
 		pause();
+	}
 	return (0);
 }

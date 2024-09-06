@@ -6,123 +6,105 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:59:26 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/03 18:23:15 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/06 13:27:35 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../includes/minitalk.h"
-#include <stdio.h>
+#include "minitalk.h"
 
-void	args_check(int argc, char **argv)
+volatile sig_atomic_t	g_server_is_open = false;
+
+void knock (__pid_t server_pid)
 {
-	int	i;
+	int	retries = 10;
+	int	timeout = 3;
 
-	i = 0;
-	if (argc != 3)
-		error_handler("Invalid number of args, \
-Usage: ./client <server_pid> <message>");
-	while (argv[1][i])
+	while (g_server_is_open == false && retries > 0)
 	{
-		if (argv[1][i] < '0' || argv[1][i] > '9')
-			error_handler("Invalid PID");
-		i++;
-	}
-	if (*argv[2] == 0)
-		error_handler("Invalid message (empty)");
-}
-
-void	send_length(__pid_t server_pid, size_t length)
-{
-	unsigned char	byte;
-	int				bits;
-	int				i;
-
-	printf("Client: Sending message length: %zu\n", length);
-	i = sizeof(size_t) - 1;
-	while (i >= 0)
-	{
-		byte = (length >> (i * 8)) & 0xFF;
-		printf("Client: Sending byte: 0x%02X\n", byte);
-		bits = 8;
-		while (bits--)
+		if (DEBUG == ON)
+			printf("Waiting for server response...\n");
+		send_signal(server_pid, SIGUSR2, 0, CLIENT);
+		sleep(timeout);
+		// timeout += timeout * 2;
+		if (g_server_is_open == false)
 		{
-			if (byte & 0x80)
-			{
-				if (kill(server_pid, SIGUSR1) == -1)
-					error_handler("Signal sending failed (invalid server)");
-			}
-			else if (kill(server_pid, SIGUSR2) == -1)
-				error_handler("Signal sending failed (invalid server)");
-			usleep(800);
-			byte <<= 1;
+			retries--;
+			if (DEBUG == ON)
+				printf("No response. Retrying after %d seconds (%d retries left)\n", timeout, retries);
 		}
-		i--;
 	}
+	if (g_server_is_open == false)
+		error_handler("Server not responding. Exiting...");
 }
 
-void	send_message(__pid_t server_pid, char *msg)
+void	send_char(__pid_t server_pid, unsigned char c)
 {
-	unsigned char	c;
 	int				bits;
 
-	while (*msg)
+	bits = 7;
+	if (DEBUG == ON)
+		printf("Sending %c, bits left %u\n", c, bits);
+	while (bits >= 0)
 	{
-		c = *msg;
-		bits = 8;
-		while (bits--)
-		{
-			if (c & 0b10000000)
-			{
-				if (kill(server_pid, SIGUSR1) == -1)
-					error_handler("Signal sending failed (invalid server)");
-			}
-			else if (kill(server_pid, SIGUSR2) == -1)
-				error_handler("Signal sending failed (invalid server)");
-			usleep(800);
-			c <<= 1;
-		}
-		msg++;
+		if (c & (1 << bits))
+			send_signal(server_pid, SIGUSR1, 0, CLIENT);
+		else
+			send_signal(server_pid, SIGUSR2, 0, CLIENT);
+		bits--;
+		pause();
+		usleep(100);
 	}
 }
 
-void	sigusr_recieved(int signum, siginfo_t *info, void *ucontext)
+void	confirmation_sig(int signum, siginfo_t *info, void *ucontext)
 {
 	(void)ucontext;
 	(void)info;
+	if (DEBUG == ON)
+		printf("In confirmation_sig\n");
 	if (signum == SIGUSR1)
 	{
-		write(1, "Message received by server.\n", 29);
+		if (write(1, "Message printed by server\n", 27) == -1)
+			error_handler("Write failed in confirmation_sig");
 		exit(0);
 	}
 	if (signum == SIGUSR2)
 		error_handler("Server failed");
 }
 
-void	signal_config(void)
+void	server_status(int signum, siginfo_t *info, void *ucontext)
 {
-	struct sigaction	sa_newsignal;
-
-	sa_newsignal.sa_sigaction = &sigusr_recieved;
-	sa_newsignal.sa_flags = SA_SIGINFO;
-	sigemptyset(&sa_newsignal.sa_mask);
-	if (sigaction(SIGUSR1, &sa_newsignal, NULL) == -1)
-		error_handler("SIGUSR1 behavior didn't change.");
-	if (sigaction(SIGUSR2, &sa_newsignal, NULL) == -1)
-		error_handler("SIGUSR2 behavior didn't change.");
+	(void)ucontext;
+	(void)info;
+	if (DEBUG == ON)
+		printf("In server_status\n");
+	if (signum == SIGUSR2)
+	{
+		write(1, "Server is busy, please wait⌛\n", 32);
+		sleep(3);
+	}
+	else
+		g_server_is_open = true;
 }
 
 int	main(int argc, char **argv)
 {
 	__pid_t	server_pid;
-	size_t	message_len;
+	int		i;
 
 	args_check(argc, argv);
 	server_pid = minitalk_atoi(argv[1]);
-	message_len = minitalk_strlen(argv[2]);
-	signal_config();
-	send_length(server_pid, message_len);
-	send_message(server_pid, argv[2]);
-	while (1)
-		pause();
+	signal_config(server_status);
+	knock (server_pid);
+	if (DEBUG == ON)
+		printf("Got answer, sending message\n");
+	i = 0;
+	while (argv[2][i] != '\0')
+		send_char(server_pid, argv[2][i++]);
+	send_char(server_pid, argv[2][i]);
+	if (DEBUG == ON)
+		printf("Message sent\n");
+	signal_config(confirmation_sig);
+	pause();
 	return (0);
 }
