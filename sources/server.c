@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:30:05 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/06 13:27:36 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/06 20:03:01 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,18 +16,18 @@ volatile bool	g_is_processing_message = false;
 
 int	check_message(siginfo_t *info, __pid_t *current_client_pid)
 {
-	if (DEBUG == ON)
+	if (DEBUG == YES)
 		printf("Checking message\n");
 	if (g_is_processing_message == true && *current_client_pid != info->si_pid)
 	{
-		if (DEBUG == ON)
-			printf("Server sent busy\n");
+		if (DEBUG == YES)
+			printf("Server sent busy to %u\n", info->si_pid);
 		send_signal(*current_client_pid, SIGUSR2, 100, SERVER);
 		return (-1);
 	}
 	else if (g_is_processing_message == false)
 	{
-		if (DEBUG == ON)
+		if (DEBUG == YES)
 			printf("SERVER SENT OPEN\n");
 		*current_client_pid = info->si_pid;
 		g_is_processing_message = true;
@@ -39,7 +39,7 @@ int	check_message(siginfo_t *info, __pid_t *current_client_pid)
 
 int	process_message(t_message *msg, __pid_t current_client_pid)
 {
-	if (DEBUG == ON)
+	if (DEBUG == YES)
 		printf("Processing message\n");
 	append_to_buffer(msg);
 	if (msg->current_char == '\0')
@@ -62,7 +62,7 @@ int	print_message(int signum, t_message *msg, __pid_t current_client_pid)
 	int	result;
 
 	result = false;
-	if (DEBUG == ON)
+	if (DEBUG == YES)
 		printf("In print_message\n");
 	if (signum == SIGUSR1)
 		msg->current_char |= (1 << msg->bit_iter);
@@ -78,13 +78,13 @@ int	print_message(int signum, t_message *msg, __pid_t current_client_pid)
 	return (result);
 }
 
-void	sigusr_handler(int signum, siginfo_t *info, void *context)
+void	message_handler(int signum, siginfo_t *info, void *context)
 {
 	static __pid_t		current_client_pid = 0;
 	static t_message	msg = {NULL, 0, 0, 7, 0};
 
 	(void)context;
-	if (DEBUG == ON)
+	if (DEBUG == YES)
 		printf("In sigusr_handler\n");
 	if (check_message(info, &current_client_pid) == -1)
 		return ;
@@ -109,12 +109,12 @@ int	main(void)
 		error_handler("Failed to get PID");
 	minitalk_print_pid(pid);
 	write(1, " is server PID\n", 16);
-	if (DEBUG == ON)
+	if (DEBUG == YES)
 		printf("Setting handler\n");
-	signal_config(sigusr_handler);
+	signal_config(message_handler);
 	while (1)
 	{
-		if (DEBUG == ON)
+		if (DEBUG == YES)
 			printf("Pause nro %u\n", i++);
 		pause();
 	}

@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/05 19:32:20 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/06 13:27:38 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/06 20:03:47 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,7 @@ void	error_handler(char *error_message)
 
 void	send_signal(__pid_t pid, int signal, int sleep_time, int sender)
 {
-	if (DEBUG == ON)
+	if (DEBUG == YES)
 		printf("Sent %u to %u\n", signal, pid);
 	if (sender == SERVER && sleep_time > 0)
 		usleep(sleep_time);
@@ -42,17 +42,17 @@ void	send_signal(__pid_t pid, int signal, int sleep_time, int sender)
 		usleep(sleep_time);
 }
 
-void	signal_config(void *sigaction_function)
+void	signal_config(void *handler)
 {
 	struct sigaction	sa_newsignal;
 
-	sa_newsignal.sa_sigaction = sigaction_function;
+	sa_newsignal.sa_sigaction = handler;
 	sa_newsignal.sa_flags = SA_SIGINFO;
 	sigemptyset(&sa_newsignal.sa_mask);
 	if (sigaction(SIGUSR1, &sa_newsignal, NULL) == -1)
 		error_handler("SIGUSR1 behavior didn't change.");
 	if (sigaction(SIGUSR2, &sa_newsignal, NULL) == -1)
 		error_handler("SIGUSR2 behavior didn't change.");
-	if (DEBUG == ON)
+	if (DEBUG == YES)
 		printf("Signal_config done\n");
 }

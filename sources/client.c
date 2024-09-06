@@ -6,61 +6,77 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:59:26 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/06 13:27:35 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/06 20:11:50 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minitalk.h"
 
-volatile sig_atomic_t	g_server_is_open = false;
+volatile size_t	g_server_is_open = false;
 
-void knock (__pid_t server_pid)
+int	retry_adjuster(int adjuster, int reset)
 {
-	int	retries = 10;
-	int	timeout = 3;
+	static int	retry_adjuster = 5;
+	int			abs_adjuster;
 
-	while (g_server_is_open == false && retries > 0)
+	if (reset)
+		retry_adjuster = 5;
+	else if (adjuster > 0)
+		retry_adjuster += adjuster;
+	else if (adjuster < 0)
 	{
-		if (DEBUG == ON)
-			printf("Waiting for server response...\n");
-		send_signal(server_pid, SIGUSR2, 0, CLIENT);
-		sleep(timeout);
-		// timeout += timeout * 2;
+		abs_adjuster = -adjuster;
+		retry_adjuster -= abs_adjuster;
+	}
+	return (retry_adjuster);
+}
+
+void	status_handler(int signum, siginfo_t *info, void *ucontext)
+{
+	int	retry;
+
+	(void)ucontext;
+	(void)info;
+	if (DEBUG == YES)
+		printf("In server_status\n");
+	if (signum == SIGUSR2)
+	{
+		retry = retry_adjuster(1, NO);
+		if (retry > 10)
+		{
+			write(1, "Retry count too high, resetting to 5\n", 38);
+			retry_adjuster(0, YES);
+		}
+		sleep(3);
+	}
+	else
+		g_server_is_open = true;
+}
+
+void	knock(__pid_t server_pid)
+{
+	int	retry;
+
+	while (g_server_is_open == false)
+	{
+		printf("Waiting for server response...\n");
+		send_signal(server_pid, SIGUSR2, 4000, CLIENT);
 		if (g_server_is_open == false)
 		{
-			retries--;
-			if (DEBUG == ON)
-				printf("No response. Retrying after %d seconds (%d retries left)\n", timeout, retries);
+			retry = retry_adjuster(-1, NO);
+			printf("Server is busy. %d retries left\n", retry);
+			sleep(RETRY_DELAY);
 		}
-	}
-	if (g_server_is_open == false)
-		error_handler("Server not responding. Exiting...");
-}
-
-void	send_char(__pid_t server_pid, unsigned char c)
-{
-	int				bits;
-
-	bits = 7;
-	if (DEBUG == ON)
-		printf("Sending %c, bits left %u\n", c, bits);
-	while (bits >= 0)
-	{
-		if (c & (1 << bits))
-			send_signal(server_pid, SIGUSR1, 0, CLIENT);
-		else
-			send_signal(server_pid, SIGUSR2, 0, CLIENT);
-		bits--;
-		pause();
-		usleep(100);
+		if (retry == 0)
+			error_handler("Client timeout, server too busy");
 	}
 }
 
-void	confirmation_sig(int signum, siginfo_t *info, void *ucontext)
+void	confirmation_handler(int signum, siginfo_t *info, void *ucontext)
 {
 	(void)ucontext;
 	(void)info;
-	if (DEBUG == ON)
+	if (DEBUG == YES)
 		printf("In confirmation_sig\n");
 	if (signum == SIGUSR1)
 	{
@@ -72,21 +88,6 @@ void	confirmation_sig(int signum, siginfo_t *info, void *ucontext)
 		error_handler("Server failed");
 }
 
-void	server_status(int signum, siginfo_t *info, void *ucontext)
-{
-	(void)ucontext;
-	(void)info;
-	if (DEBUG == ON)
-		printf("In server_status\n");
-	if (signum == SIGUSR2)
-	{
-		write(1, "Server is busy, please wait⌛\n", 32);
-		sleep(3);
-	}
-	else
-		g_server_is_open = true;
-}
-
 int	main(int argc, char **argv)
 {
 	__pid_t	server_pid;
@@ -94,17 +95,17 @@ int	main(int argc, char **argv)
 
 	args_check(argc, argv);
 	server_pid = minitalk_atoi(argv[1]);
-	signal_config(server_status);
-	knock (server_pid);
-	if (DEBUG == ON)
+	signal_config(status_handler);
+	knock(server_pid);
+	if (DEBUG == YES)
 		printf("Got answer, sending message\n");
 	i = 0;
 	while (argv[2][i] != '\0')
 		send_char(server_pid, argv[2][i++]);
 	send_char(server_pid, argv[2][i]);
-	if (DEBUG == ON)
+	if (DEBUG == YES)
 		printf("Message sent\n");
-	signal_config(confirmation_sig);
+	signal_config(confirmation_handler);
 	pause();
 	return (0);
 }

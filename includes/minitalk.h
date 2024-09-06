@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:28:59 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/06 13:27:37 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/06 20:16:30 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,9 +15,12 @@
 
 # define CLIENT 1
 # define SERVER 2
-# define ON 1
-# define OFF 0
-# define DEBUG OFF
+
+# define YES 1
+# define NO 0
+# define DEBUG YES
+
+# define RETRY_DELAY 3
 
 # include <signal.h>
 # include <unistd.h>
@@ -46,5 +49,6 @@ void	signal_config(void *sigaction_function);
 void	send_signal(__pid_t pid, int signal, int sleep_time, int sender);
 void	reset_message(t_message *msg);
 void	append_to_buffer(t_message *msg);
+void	send_char(__pid_t server_pid, unsigned char c);
 
 #endif
