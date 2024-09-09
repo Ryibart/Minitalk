@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:28:59 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/06 20:16:30 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/09 19:41:03 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,9 +18,16 @@
 
 # define YES 1
 # define NO 0
-# define DEBUG YES
+# define DEBUG NO
+# define SERVER_DEBUG NO
 
-# define RETRY_DELAY 3
+# define MAX_RETRY 5
+# define TIMEOUT_COUNT 5
+# define RETRY_SLEEP 3
+
+# define SHORT_T 0
+# define MED_T 200
+# define LONG_T 2000
 
 # include <signal.h>
 # include <unistd.h>
@@ -49,6 +56,6 @@ void	signal_config(void *sigaction_function);
 void	send_signal(__pid_t pid, int signal, int sleep_time, int sender);
 void	reset_message(t_message *msg);
 void	append_to_buffer(t_message *msg);
-void	send_char(__pid_t server_pid, unsigned char c);
+void	send_char(__pid_t server_pid, unsigned char c, volatile sig_atomic_t *server_is_open);
 
 #endif

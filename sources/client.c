@@ -6,69 +6,58 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:59:26 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/06 20:11:50 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/09 18:58:50 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "minitalk.h"
 
-volatile size_t	g_server_is_open = false;
-
-int	retry_adjuster(int adjuster, int reset)
-{
-	static int	retry_adjuster = 5;
-	int			abs_adjuster;
-
-	if (reset)
-		retry_adjuster = 5;
-	else if (adjuster > 0)
-		retry_adjuster += adjuster;
-	else if (adjuster < 0)
-	{
-		abs_adjuster = -adjuster;
-		retry_adjuster -= abs_adjuster;
-	}
-	return (retry_adjuster);
-}
+volatile sig_atomic_t	g_server_is_open = false;
 
 void	status_handler(int signum, siginfo_t *info, void *ucontext)
 {
-	int	retry;
+	static int	retries = 5;
+	int			timeout;
 
 	(void)ucontext;
 	(void)info;
 	if (DEBUG == YES)
 		printf("In server_status\n");
-	if (signum == SIGUSR2)
+	if (signum == SIGUSR1)
 	{
-		retry = retry_adjuster(1, NO);
-		if (retry > 10)
-		{
-			write(1, "Retry count too high, resetting to 5\n", 38);
-			retry_adjuster(0, YES);
-		}
-		sleep(3);
+		if (DEBUG == YES)
+			printf("Server is open\n");
+		g_server_is_open = true;
 	}
 	else
-		g_server_is_open = true;
-}
-
-void	knock(__pid_t server_pid)
-{
-	int	retry;
-
-	while (g_server_is_open == false)
 	{
-		printf("Waiting for server response...\n");
-		send_signal(server_pid, SIGUSR2, 4000, CLIENT);
-		if (g_server_is_open == false)
+		if (DEBUG == YES)
+			printf("Server is busy\n");
+		retries = MAX_RETRY;
+		while (retries > 0)
 		{
-			retry = retry_adjuster(-1, NO);
-			printf("Server is busy. %d retries left\n", retry);
-			sleep(RETRY_DELAY);
+			timeout = TIMEOUT_COUNT;
+			while (g_server_is_open == false && timeout > 0)
+			{
+				sleep(RETRY_SLEEP);
+				timeout--;
+				if (g_server_is_open == true)
+					break ;
+				if (timeout == 0)
+				{
+					retries--;
+					if (retries == 0)
+					{
+						error_handler("Timeout occurred, server too busy");
+					}
+					if (DEBUG == YES)
+						printf("Retrying knock signal, %d retries left\n", retries);
+				}
+			}
+			send_signal(info->si_pid, SIGUSR2, LONG_T, CLIENT);
+			if (g_server_is_open == true)
+				break ;
 		}
-		if (retry == 0)
-			error_handler("Client timeout, server too busy");
 	}
 }
 
@@ -91,18 +80,24 @@ void	confirmation_handler(int signum, siginfo_t *info, void *ucontext)
 int	main(int argc, char **argv)
 {
 	__pid_t	server_pid;
+	__pid_t	client_pid;
 	int		i;
 
+	if (DEBUG == YES)
+		client_pid = getpid();
 	args_check(argc, argv);
 	server_pid = minitalk_atoi(argv[1]);
 	signal_config(status_handler);
-	knock(server_pid);
+	if (DEBUG == YES)
+		printf("Client %u is knocking\n", client_pid);
+	send_signal(server_pid, SIGUSR2, LONG_T, CLIENT);
 	if (DEBUG == YES)
 		printf("Got answer, sending message\n");
 	i = 0;
+	usleep(SHORT_T);
 	while (argv[2][i] != '\0')
-		send_char(server_pid, argv[2][i++]);
-	send_char(server_pid, argv[2][i]);
+		send_char(server_pid, argv[2][i++], &g_server_is_open);
+	send_char(server_pid, argv[2][i], &g_server_is_open);
 	if (DEBUG == YES)
 		printf("Message sent\n");
 	signal_config(confirmation_handler);
