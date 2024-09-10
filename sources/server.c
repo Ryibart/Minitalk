@@ -6,12 +6,10 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:30:05 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/09 19:37:15 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/10 16:41:15 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-
-// double check usleep times and better back and forth communication
 #include "minitalk.h"
 
 volatile sig_atomic_t	g_is_processing_message = false;
@@ -71,6 +69,11 @@ int	print_message(int signum, t_message *msg, __pid_t current_client_pid)
 	msg->bit_iter--;
 	if (msg->bit_iter < 0)
 	{
+		if (msg->current_char >= 0x80)
+		{
+			msg->byte_count++;
+			if (msg->byte_count)
+		}
 		msg->bit_iter = 7;
 		result = process_message(msg, current_client_pid);
 		msg->current_char = 0;
@@ -86,8 +89,8 @@ void	message_handler(int signum, siginfo_t *info, void *context)
 	static t_message	msg = {NULL, 0, 0, 7, 0};
 
 	(void)context;
-	// if (SERVER_DEBUG == YES)
-	// 	printf("Received %d from  %d\n", signum, info->si_pid);
+	if (SERVER_DEBUG == YES)
+		printf("Received %d from  %d\n", signum, info->si_pid);
 	if (check_message(info, &current_client_pid) == -1)
 		return ;
 	if (g_is_processing_message == true && current_client_pid == info->si_pid)
@@ -97,8 +100,8 @@ void	message_handler(int signum, siginfo_t *info, void *context)
 			send_signal(current_client_pid, SIGUSR1, LONG_T, SERVER);
 			current_client_pid = 0;
 			g_is_processing_message = false;
-			// if (SERVER_DEBUG == YES)
-			// 	printf("SERVER SENT DONE TO %u (Processing is %d)\n", info->si_pid, g_is_processing_message);
+			if (SERVER_DEBUG == YES)
+				printf("SERVER SENT DONE TO %u (Processing is %d)\n", info->si_pid, g_is_processing_message);
 		}
 	}
 }
