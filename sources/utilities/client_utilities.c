@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:31:12 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/10 16:24:25 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/11 20:16:55 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,29 +52,28 @@ void	send_char(__pid_t server_pid, unsigned char c, volatile sig_atomic_t *serve
 	int	retries;
 	int	timeout;
 
-	bits = 7;
-	timeout = 0;
+	bits = 8;
 	if (DEBUG == YES)
-		printf("Sending '%c'", c);
-	while (bits >= 0)
+		printf("Sending '%c'\n", c);
+	while (bits--)
 	{
 		retries = MAX_RETRY;
 		while (retries > 0)
 		{
-			if (c & (1 << bits))
-				send_signal(server_pid, SIGUSR1, 0, CLIENT);
+			if (c & 0b10000000)
+				send_signal(server_pid, SIGUSR1, 1, CLIENT);
 			else
-				send_signal(server_pid, SIGUSR2, 0, CLIENT);
+				send_signal(server_pid, SIGUSR2, 1, CLIENT);
 			timeout = TIMEOUT_COUNT;
 			while (*server_is_open == false && timeout > 0)
 			{
-				sleep(RETRY_SLEEP);
+				usleep(RETRY_SLEEP);
 				timeout--;
 				if (*server_is_open == true)
 					break ;
 				if (timeout == 0)
 				{
-					if  (--retries == 0)
+					if (--retries == 0)
 						error_handler("Timeout occured, server has failed");
 					if (DEBUG == YES)
 						printf("Retrying bit '%d' for character '%c'\n", bits, c);
@@ -83,7 +82,7 @@ void	send_char(__pid_t server_pid, unsigned char c, volatile sig_atomic_t *serve
 			if (*server_is_open == true)
 				break ;
 		}
-		bits--;
+		c <<= 1;
 		*server_is_open = false;
 	}
 }

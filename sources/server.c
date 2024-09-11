@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:30:05 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/10 16:41:15 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/11 21:15:45 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,7 @@ int	check_message(siginfo_t *info, __pid_t *current_client_pid)
 	{
 		if (SERVER_DEBUG == YES)
 			printf("Server sent busy to %u\n", info->si_pid);
-		send_signal(info->si_pid, SIGUSR2, MED_T, SERVER);
+		send_signal(info->si_pid, SIGUSR2, SHORT_T, SERVER);
 		return (-1);
 	}
 	else if (g_is_processing_message == false)
@@ -31,9 +31,8 @@ int	check_message(siginfo_t *info, __pid_t *current_client_pid)
 		g_is_processing_message = true;
 		if (SERVER_DEBUG == YES)
 			printf("SERVER SENT OPEN TO %u (Processing is %d)\n", info->si_pid, g_is_processing_message);
-		send_signal(*current_client_pid, SIGUSR1, MED_T, SERVER);
+		send_signal(*current_client_pid, SIGUSR1, LONG_T, SERVER);
 		return (-1);
-	}
 	return (1);
 }
 
@@ -59,9 +58,9 @@ int	process_message(t_message *msg, __pid_t current_client_pid)
 
 int	print_message(int signum, t_message *msg, __pid_t current_client_pid)
 {
-	int	result;
+	int		message_printed;
 
-	result = false;
+	message_printed = false;
 	if (SERVER_DEBUG == YES)
 		printf("In print_message\n");
 	if (signum == SIGUSR1)
@@ -69,18 +68,13 @@ int	print_message(int signum, t_message *msg, __pid_t current_client_pid)
 	msg->bit_iter--;
 	if (msg->bit_iter < 0)
 	{
-		if (msg->current_char >= 0x80)
-		{
-			msg->byte_count++;
-			if (msg->byte_count)
-		}
 		msg->bit_iter = 7;
-		result = process_message(msg, current_client_pid);
+		message_printed = process_message(msg, current_client_pid);
 		msg->current_char = 0;
 	}
-	if (result == false)
-		send_signal(current_client_pid, SIGUSR1, SHORT_T, SERVER); // HERE DIFFERENT ERROR MESSAGE
-	return (result);
+	if (message_printed == false)
+		send_signal(current_client_pid, SIGUSR1, SHORT_T, SERVER);
+	return (message_printed);
 }
 
 void	message_handler(int signum, siginfo_t *info, void *context)

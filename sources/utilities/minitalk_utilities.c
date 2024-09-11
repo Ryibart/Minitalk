@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/05 19:32:20 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/06 20:03:47 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/11 20:22:59 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,7 +27,7 @@ void	error_handler(char *error_message)
 	write(2, "Error: ", 8);
 	write(2, error_message, minitalk_strlen(error_message));
 	write(2, "\n", 1);
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 void	send_signal(__pid_t pid, int signal, int sleep_time, int sender)
@@ -55,4 +55,17 @@ void	signal_config(void *handler)
 		error_handler("SIGUSR2 behavior didn't change.");
 	if (DEBUG == YES)
 		printf("Signal_config done\n");
+}
+
+int	char_length(unsigned char c)
+{
+	if ((c & 0x80) == 0)
+		return 1; // 1-byte ASCII
+	if ((c & 0xE0) == 0xC0)
+		return 2; // 2-byte UTF-8
+	if ((c & 0xF0) == 0xE0)
+		return 3; // 3-byte UTF-8
+	if ((c & 0xF8) == 0xF0)
+		return 4; // 4-byte UTF-8
+	return (-1); // Invalid UTF-8 sequence
 }

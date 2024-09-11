@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:59:26 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/10 16:26:09 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/11 20:26:45 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,7 +39,7 @@ void	status_handler(int signum, siginfo_t *info, void *ucontext)
 			timeout = TIMEOUT_COUNT;
 			while (g_server_is_open == false && timeout > 0)
 			{
-				sleep(RETRY_SLEEP);
+				usleep(RETRY_SLEEP);
 				timeout--;
 				if (g_server_is_open == true)
 					break ;
@@ -71,7 +71,7 @@ void	confirmation_handler(int signum, siginfo_t *info, void *ucontext)
 	{
 		if (write(1, "Message printed by server\n", 27) == -1)
 			error_handler("Write failed in confirmation_sig");
-		exit(0);
+		exit(EXIT_SUCCESS);
 	}
 	if (signum == SIGUSR2)
 		error_handler("Server failed");
@@ -101,6 +101,6 @@ int	main(int argc, char **argv)
 	if (DEBUG == YES)
 		printf("Message sent\n");
 	signal_config(confirmation_handler);
-	pause();
-	return (0);
+	sleep(5);
+	error_handler("Timeout, server failed");
 }
