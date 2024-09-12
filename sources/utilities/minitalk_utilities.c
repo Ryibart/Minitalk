@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/05 19:32:20 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/11 20:22:59 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/12 18:44:19 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,22 +22,45 @@ size_t	minitalk_strlen(const char *s)
 	return (i);
 }
 
-void	error_handler(char *error_message)
+void	retry_message(char *message)
 {
-	write(2, "Error: ", 8);
-	write(2, error_message, minitalk_strlen(error_message));
-	write(2, "\n", 1);
-	exit(EXIT_FAILURE);
+	write(1, MOVE_CURSOR_UP, 4);
+	write(1, CLEAR_LINE, 3);
+	minitalk_print(message, MESSAGE, YELLOW, BLINK);
+}
+
+void	minitalk_print(char *message, int flag, char *color, char *format)
+{
+	if (flag == ERROR)
+	{
+		write(2, RED, minitalk_strlen(RED));
+		if (format)
+			write(2, format, minitalk_strlen(format));
+		write(2, "Error: ", 7);
+		write(2, message, minitalk_strlen(message));
+		write(2, "\n", 1);
+		write(2, RESET, minitalk_strlen(RESET));
+		exit(EXIT_FAILURE);
+	}
+	else if (flag == MESSAGE)
+	{
+		write(1, color, minitalk_strlen(color));
+		if (format)
+			write(1, format, minitalk_strlen(format));
+		write(1, message, minitalk_strlen(message));
+		write(1, "\n", 1);
+		write(1, RESET, minitalk_strlen(RESET));
+	}
 }
 
 void	send_signal(__pid_t pid, int signal, int sleep_time, int sender)
 {
-	if (DEBUG == YES)
+	if (CLIENT_DEBUG == ON || SERVER_DEBUG == ON)
 		printf("Sent %u to %u\n", signal, pid);
 	if (sender == SERVER && sleep_time > 0)
 		usleep(sleep_time);
 	if (kill(pid, signal) == -1)
-		error_handler("Signal sending failed (invalid recipient)");
+		minitalk_print("Signal sending failed (invalid recipient)", ERROR, NULL, BOLD);
 	if (sender == CLIENT && sleep_time > 0)
 		usleep(sleep_time);
 }
@@ -50,22 +73,9 @@ void	signal_config(void *handler)
 	sa_newsignal.sa_flags = SA_SIGINFO;
 	sigemptyset(&sa_newsignal.sa_mask);
 	if (sigaction(SIGUSR1, &sa_newsignal, NULL) == -1)
-		error_handler("SIGUSR1 behavior didn't change.");
+		minitalk_print("SIGUSR1 behavior didn't change.", ERROR, NULL, BOLD);
 	if (sigaction(SIGUSR2, &sa_newsignal, NULL) == -1)
-		error_handler("SIGUSR2 behavior didn't change.");
-	if (DEBUG == YES)
+		minitalk_print("SIGUSR2 behavior didn't change.", ERROR, NULL, BOLD);
+	if (CLIENT_DEBUG == ON || SERVER_DEBUG == ON)
 		printf("Signal_config done\n");
-}
-
-int	char_length(unsigned char c)
-{
-	if ((c & 0x80) == 0)
-		return 1; // 1-byte ASCII
-	if ((c & 0xE0) == 0xC0)
-		return 2; // 2-byte UTF-8
-	if ((c & 0xF0) == 0xE0)
-		return 3; // 3-byte UTF-8
-	if ((c & 0xF8) == 0xF0)
-		return 4; // 4-byte UTF-8
-	return (-1); // Invalid UTF-8 sequence
 }

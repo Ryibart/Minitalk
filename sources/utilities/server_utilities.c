@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/10 13:19:15 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/11 11:54:51 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/12 18:02:05 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,12 +27,12 @@ void	minitalk_print_pid(int pid)
 		pid /= 10;
 	}
 	if (write(1, &buffer[i + 1], 11 - i) == -1)
-		error_handler("PID printing failed");
+		minitalk_print("PID printing failed", ERROR, NULL, BOLD);
 }
 
 void	reset_message(t_message *msg)
 {
-	if (SERVER_DEBUG == YES)
+	if (SERVER_DEBUG == ON)
 		printf("Reseting message\n");
 	minitalk_meta_free(msg->buffer);
 	msg->buffer = NULL;
@@ -42,34 +42,26 @@ void	reset_message(t_message *msg)
 	msg->current_char = 0;
 }
 
-void	append_to_buffer(t_message *msg)
+int	verify_message(siginfo_t *info, __pid_t *current_client_pid,
+					volatile sig_atomic_t *processing_message)
 {
-	if (SERVER_DEBUG == YES)
+	if (SERVER_DEBUG == ON)
+		printf("Checking message\n");
+	if (*processing_message == true && *current_client_pid != info->si_pid)
 	{
-		printf("Appending to buffer\n");
-		printf("Before appending:\n");
-		printf("buffer_index: %zu\n", msg->buffer_index);
-		printf("buffer_size: %zu\n", msg->buffer_size);
-		printf("current_char: '%c' (ASCII: %d)\n", msg->current_char, msg->current_char);
+		if (SERVER_DEBUG == ON)
+			printf("Server sent busy to %u\n", info->si_pid);
+		send_signal(info->si_pid, SIGUSR2, LONG_T, SERVER);
+		return (-1);
 	}
-	if (msg->buffer_index >= msg->buffer_size)
+	else if (*processing_message == false)
 	{
-		if (SERVER_DEBUG == YES)
-			printf("Resizing buffer...\n");
-		if (msg->buffer_size < 2)
-			msg->buffer_size = 8;
-		msg->buffer_size += msg->buffer_size * 2;
-		if (SERVER_DEBUG == YES)
-			printf("New buffer_size: %zu\n", msg->buffer_size);
-		msg->buffer = minitalk_realloc(msg->buffer, msg->buffer_size);
-		if (msg->buffer == NULL)
-			error_handler("Buffer allocation failed");
+		*current_client_pid = info->si_pid;
+		*processing_message = true;
+		if (SERVER_DEBUG == ON)
+			printf("SERVER SENT OPEN TO %u (Processing is %d)\n", info->si_pid, *processing_message);
+		send_signal(*current_client_pid, SIGUSR1, LONG_T, SERVER);
+		return (-1);
 	}
-	msg->buffer[msg->buffer_index++] = msg->current_char;
-	if (SERVER_DEBUG == YES)
-	{
-		printf("After appending:\n");
-		printf("buffer_index: %zu\n", msg->buffer_index);
-		printf("Buffer now contains: \"%s\"\n", msg->buffer);
-	}
+	return (1);
 }

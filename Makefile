@@ -6,7 +6,7 @@
 #    By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/06/26 18:30:16 by rtammi            #+#    #+#              #
-#    Updated: 2024/09/06 13:27:37 by rtammi           ###   ########.fr        #
+#    Updated: 2024/09/12 17:56:53 by rtammi           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -18,7 +18,7 @@ UTILITIES		:= ./sources/utilities/
 
 # Compiler and Flags
 CC              := cc
-CFLAGS          := -Wall -Wextra -Werror
+CFLAGS          := 
 DEPSFLAGS       := -MMD -MP
 ECHOFLAG		:= 
 HEADERFLAG		:= -I ./includes/

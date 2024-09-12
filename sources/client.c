@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:59:26 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/11 20:26:45 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/12 18:40:00 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,22 +16,27 @@ volatile sig_atomic_t	g_server_is_open = false;
 
 void	status_handler(int signum, siginfo_t *info, void *ucontext)
 {
-	static int	retries = 5;
-	int			timeout;
+	int				retries;
+	int				timeout;
+	static __pid_t	server_pid = 0;
 
 	(void)ucontext;
 	(void)info;
-	if (DEBUG == YES)
+	if (server_pid == 0)
+		server_pid = info->si_pid;
+	else if (server_pid != info->si_pid)
+		return ;
+	if (CLIENT_DEBUG == ON)
 		printf("In server_status\n");
 	if (signum == SIGUSR1)
 	{
-		if (DEBUG == YES)
+		if (CLIENT_DEBUG == ON)
 			printf("Server is open\n");
 		g_server_is_open = true;
 	}
-	else
+	else if (signum == SIGUSR2)
 	{
-		if (DEBUG == YES)
+		if (CLIENT_DEBUG == ON)
 			printf("Server is busy\n");
 		retries = MAX_RETRY;
 		while (retries > 0)
@@ -47,11 +52,8 @@ void	status_handler(int signum, siginfo_t *info, void *ucontext)
 				{
 					retries--;
 					if (retries == 0)
-					{
-						error_handler("Timeout occurred, server too busy");
-					}
-					if (DEBUG == YES)
-						printf("Retrying knock signal, %d retries left\n", retries);
+						minitalk_print("Timeout occurred, server too busy", ERROR, NULL, BOLD);
+					retry_message("Recipient busy, retrying sending verify signal");
 				}
 			}
 			send_signal(info->si_pid, SIGUSR2, LONG_T, CLIENT);
@@ -65,16 +67,16 @@ void	confirmation_handler(int signum, siginfo_t *info, void *ucontext)
 {
 	(void)ucontext;
 	(void)info;
-	if (DEBUG == YES)
+	if (CLIENT_DEBUG == ON)
 		printf("In confirmation_sig\n");
 	if (signum == SIGUSR1)
 	{
 		if (write(1, "Message printed by server\n", 27) == -1)
-			error_handler("Write failed in confirmation_sig");
+			minitalk_print("Write failed in confirmation_sig", ERROR, NULL, BOLD);
 		exit(EXIT_SUCCESS);
 	}
 	if (signum == SIGUSR2)
-		error_handler("Server failed");
+		minitalk_print("Server failed", ERROR, NULL, BOLD);
 }
 
 int	main(int argc, char **argv)
@@ -83,24 +85,24 @@ int	main(int argc, char **argv)
 	__pid_t	client_pid;
 	int		i;
 
-	if (DEBUG == YES)
+	if (CLIENT_DEBUG == ON)
 		client_pid = getpid();
 	args_check(argc, argv);
 	server_pid = minitalk_atoi(argv[1]);
 	signal_config(status_handler);
-	if (DEBUG == YES)
+	if (CLIENT_DEBUG == ON)
 		printf("Client %u is knocking\n", client_pid);
-	send_signal(server_pid, SIGUSR2, LONG_T, CLIENT);
-	if (DEBUG == YES)
+	send_signal(server_pid, SIGUSR2, SHORT_T, CLIENT);
+	if (CLIENT_DEBUG == ON)
 		printf("Got answer, sending message\n");
 	i = 0;
 	usleep(SHORT_T);
 	while (argv[2][i] != '\0')
 		send_char(server_pid, argv[2][i++], &g_server_is_open);
 	send_char(server_pid, argv[2][i], &g_server_is_open);
-	if (DEBUG == YES)
+	if (CLIENT_DEBUG == ON)
 		printf("Message sent\n");
 	signal_config(confirmation_handler);
-	sleep(5);
-	error_handler("Timeout, server failed");
+	sleep(10);
+	minitalk_print("Timeout, confirmation not received", ERROR, NULL, BOLD);
 }
