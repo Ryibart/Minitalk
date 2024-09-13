@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:28:59 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/12 19:05:22 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/13 12:16:51 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,16 +17,10 @@
 # define CLIENT 1
 # define SERVER 2
 
-/* Enable debug statements */
-# define ON 	1
-# define OFF 	0
-# define CLIENT_DEBUG  OFF
-# define SERVER_DEBUG  OFF
-
 /* Macros for retry mechanism */
 # define MAX_RETRY     5	  // Times retry performs
-# define RETRY_SLEEP   5000	 // Microseconds usleep is active
-# define TIMEOUT_COUNT 1000	// Times will RETRY_SLEEP perform before next retry
+# define RETRY_SLEEP   500000	 // Microseconds usleep is active
+# define TIMEOUT_COUNT 3	// Times will RETRY_SLEEP perform before next retry
 
 /* Macros for send_signal usleep times */
 # define SHORT_T	1
@@ -35,7 +29,6 @@
 /* Flags for minitalk_print */
 # define ERROR  1
 # define MESSAGE 2
-# define WELCOME 3
 
 /* ANSI codes */
 # define RED    "\033[31m"
@@ -46,10 +39,10 @@
 # define MOVE_CURSOR_UP "\033[A"
 # define CLEAR_LINE 	"\033[K"
 # define BOLD        	"\033[1m"
-# define ITALIC			"\033[3m"
-# define UNDERLINE		"\033[4m"
+// # define ITALIC			"\033[3m"
+// # define UNDERLINE		"\033[4m"
 # define BLINK			"\033[5m"
-# define BOLD_ITALIC	"\033[1;3m"
+// # define BOLD_ITALIC	"\033[1;3m"
 
 # define RESET	"\033[0m"
 

@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:30:05 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/12 18:16:14 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/13 12:35:48 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,40 +16,20 @@ volatile sig_atomic_t	g_processing_message = false;
 
 void	append_to_buffer(t_message *msg)
 {
-	if (SERVER_DEBUG == ON)
-		printf("Appending to buffer\n\
-		Before appending:\n\
-		buffer_index: %zu\n\
-		buffer_size: %zu\n\
-		current_char: '%c' (ASCII: %d)\n",
-		msg->buffer_index, msg->buffer_size,
-		msg->current_char, msg->current_char);
-
 	if (msg->buffer_index >= msg->buffer_size)
 	{
-		if (SERVER_DEBUG == ON)
-			printf("Resizing buffer...\n");
 		if (msg->buffer_size < 2)
 			msg->buffer_size = 8;
 		msg->buffer_size += msg->buffer_size * 2;
-		if (SERVER_DEBUG == ON)
-			printf("New buffer_size: %zu\n", msg->buffer_size);
 		msg->buffer = minitalk_realloc(msg->buffer, msg->buffer_size);
 		if (msg->buffer == NULL)
 			minitalk_print("Buffer allocation failed", ERROR, NULL, BOLD);
 	}
 	msg->buffer[msg->buffer_index++] = msg->current_char;
-	if (SERVER_DEBUG == ON)
-		printf("After appending:\n\
-		buffer_index: %zu\n\
-		Buffer now contains: \"%s\"\n",
-		msg->buffer_index, msg->buffer);
 }
 
 int	process_message(t_message *msg, __pid_t current_client_pid)
 {
-	if (SERVER_DEBUG == ON)
-		printf("Processing message\n");
 	append_to_buffer(msg);
 	if (msg->current_char == '\0')
 	{
@@ -71,8 +51,6 @@ int	print_message(int signum, t_message *msg, __pid_t current_client_pid)
 	int		message_printed;
 
 	message_printed = false;
-	if (SERVER_DEBUG == ON)
-		printf("In print_message\n");
 	if (signum == SIGUSR1)
 		msg->current_char |= (1 << msg->bit_iter);
 	msg->bit_iter--;
@@ -93,8 +71,6 @@ void	message_handler(int signum, siginfo_t *info, void *context)
 	static t_message	msg = {NULL, 0, 0, 7, 0};
 
 	(void)context;
-	if (SERVER_DEBUG == ON)
-		printf("Received %d from  %d\n", signum, info->si_pid);
 	if (info->si_pid == getpid())
 	{
 		reset_message(&msg);
@@ -109,8 +85,6 @@ void	message_handler(int signum, siginfo_t *info, void *context)
 			send_signal(current_client_pid, SIGUSR1, LONG_T, SERVER);
 			current_client_pid = 0;
 			g_processing_message = false;
-			if (SERVER_DEBUG == ON)
-				printf("SERVER SENT DONE TO %u (Processing is %d)\n", info->si_pid, g_processing_message);
 		}
 	}
 }
@@ -118,21 +92,16 @@ void	message_handler(int signum, siginfo_t *info, void *context)
 int	main(void)
 {
 	__pid_t	pid;
-	int		i = 0;
 
 	pid = getpid();
 	if (pid < 0)
 		minitalk_print("Failed to get PID", ERROR, NULL, BOLD);
 	minitalk_print_pid(pid);
 	write(1, " is server PID\n", 16);
-	if (SERVER_DEBUG == ON)
-		printf("Setting handler\n");
 	signal_config(message_handler);
 	while (1)
 	{
-		if (SERVER_DEBUG == ON)
-			printf("Pause nro %u\n", i++);
-		if (sleep(6) == 0 && g_processing_message == true)
+		if (sleep(15) == 0 && g_processing_message == true)
 			send_signal(pid, SIGUSR2, LONG_T, SERVER);
 	}
 	return (0);

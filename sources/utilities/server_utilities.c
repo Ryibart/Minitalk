@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/10 13:19:15 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/12 18:02:05 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/13 12:27:53 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,8 +32,6 @@ void	minitalk_print_pid(int pid)
 
 void	reset_message(t_message *msg)
 {
-	if (SERVER_DEBUG == ON)
-		printf("Reseting message\n");
 	minitalk_meta_free(msg->buffer);
 	msg->buffer = NULL;
 	msg->buffer_size = 0;
@@ -45,12 +43,8 @@ void	reset_message(t_message *msg)
 int	verify_message(siginfo_t *info, __pid_t *current_client_pid,
 					volatile sig_atomic_t *processing_message)
 {
-	if (SERVER_DEBUG == ON)
-		printf("Checking message\n");
 	if (*processing_message == true && *current_client_pid != info->si_pid)
 	{
-		if (SERVER_DEBUG == ON)
-			printf("Server sent busy to %u\n", info->si_pid);
 		send_signal(info->si_pid, SIGUSR2, LONG_T, SERVER);
 		return (-1);
 	}
@@ -58,8 +52,6 @@ int	verify_message(siginfo_t *info, __pid_t *current_client_pid,
 	{
 		*current_client_pid = info->si_pid;
 		*processing_message = true;
-		if (SERVER_DEBUG == ON)
-			printf("SERVER SENT OPEN TO %u (Processing is %d)\n", info->si_pid, *processing_message);
 		send_signal(*current_client_pid, SIGUSR1, LONG_T, SERVER);
 		return (-1);
 	}

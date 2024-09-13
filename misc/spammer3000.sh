@@ -4,7 +4,7 @@
 CLIENT_PATH="../client"
 
 # Emoji to send
-EMOJI="🧹"
+EMOJI="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 
 # Prompt the user to enter the server PID
 read -p "Enter the server PID: " SERVER_PID
@@ -20,7 +20,7 @@ count=0
 
 # Function to send number and emoji to the server
 send_number_and_emoji() {
-    MESSAGE="$count $EMOJI"
+    MESSAGE="$EMOJI"
     $CLIENT_PATH "$SERVER_PID" "$MESSAGE"
     # Check if the client exited with an error
     if [ $? -ne 0 ]; then
