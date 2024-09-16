@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/10 13:19:15 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/13 12:27:53 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/15 13:58:45 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,14 +45,15 @@ int	verify_message(siginfo_t *info, __pid_t *current_client_pid,
 {
 	if (*processing_message == true && *current_client_pid != info->si_pid)
 	{
-		send_signal(info->si_pid, SIGUSR2, LONG_T, SERVER);
+		kill(info->si_pid, SIGUSR2);
 		return (-1);
 	}
 	else if (*processing_message == false)
 	{
 		*current_client_pid = info->si_pid;
 		*processing_message = true;
-		send_signal(*current_client_pid, SIGUSR1, LONG_T, SERVER);
+		usleep(1000);
+		kill(*current_client_pid, SIGUSR1);
 		return (-1);
 	}
 	return (1);

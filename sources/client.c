@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:59:26 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/13 12:18:17 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/16 13:48:16 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 
 volatile sig_atomic_t	g_server_is_open = false;
 
-static void	status_signal(siginfo_t *info)
+static void	status_signal(__pid_t server_pid)
 {
 	int	retries;
 	int	timeout;
@@ -30,13 +30,13 @@ static void	status_signal(siginfo_t *info)
 				break ;
 			if (--timeout == 0)
 			{
-				retries--;
-				if (retries == 0)
+				if (--retries == 0)
 					minitalk_print("Timeout occurred, server too busy", ERROR, NULL, NULL);
-				retry_message("Recipient busy, retrying sending verify signal");
+				minitalk_print("Recipient busy, retrying sending verify signal", MESSAGE, YELLOW, BOLD_ITALIC);
 			}
 		}
-		send_signal(info->si_pid, SIGUSR2, LONG_T, CLIENT);
+		if (kill(server_pid, SIGUSR2) == -1)
+			minitalk_print("Invalid recipient", ERROR, NULL, NULL);
 		if (g_server_is_open == true)
 			break ;
 	}
@@ -55,7 +55,7 @@ void	status_handler(int signum, siginfo_t *info, void *ucontext)
 	if (signum == SIGUSR1)
 		g_server_is_open = true;
 	else if (signum == SIGUSR2)
-		status_signal(info);
+		status_signal(server_pid);
 }
 
 void	confirmation_handler(int signum, siginfo_t *info, void *ucontext)
@@ -79,8 +79,8 @@ int	main(int argc, char **argv)
 	args_check(argc, argv);
 	server_pid = minitalk_atoi(argv[1]);
 	signal_config(status_handler);
-	send_signal(server_pid, SIGUSR2, SHORT_T, CLIENT);
-	usleep(LONG_T);
+	kill(server_pid, SIGUSR2);
+	sleep(1); //DOUBLE CHECK USLEEP
 	i = 0;
 	while (argv[2][i] != '\0')
 		send_char(server_pid, argv[2][i++], &g_server_is_open);

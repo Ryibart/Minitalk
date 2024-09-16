@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:28:59 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/13 12:16:51 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/16 13:38:38 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,7 +42,7 @@
 // # define ITALIC			"\033[3m"
 // # define UNDERLINE		"\033[4m"
 # define BLINK			"\033[5m"
-// # define BOLD_ITALIC	"\033[1;3m"
+# define BOLD_ITALIC	"\033[1;3m"
 
 # define RESET	"\033[0m"
 
@@ -68,7 +68,6 @@ typedef struct s_message
 size_t	minitalk_strlen(const char *s);
 void	retry_message(char *message);
 void	minitalk_print(char *message, int flag, char *color, char *format);
-void	send_signal(__pid_t pid, int signal, int sleep_time, int sender);
 void	signal_config(void *handler);
 
 /* minitalk_realloc.c */

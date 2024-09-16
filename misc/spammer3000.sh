@@ -4,7 +4,7 @@
 CLIENT_PATH="../client"
 
 # Emoji to send
-EMOJI="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+EMOJI="🔗"
 
 # Prompt the user to enter the server PID
 read -p "Enter the server PID: " SERVER_PID

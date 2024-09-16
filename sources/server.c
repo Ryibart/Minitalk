@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:30:05 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/13 12:35:48 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/16 15:20:37 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,7 +40,7 @@ int	process_message(t_message *msg, __pid_t current_client_pid)
 			minitalk_print("Printing message failed", ERROR, NULL, BOLD);
 		}
 		reset_message(msg);
-		send_signal(current_client_pid, SIGUSR1, SHORT_T, SERVER);
+		kill(current_client_pid, SIGUSR1);
 		return (true);
 	}
 	return (false);
@@ -61,7 +61,10 @@ int	print_message(int signum, t_message *msg, __pid_t current_client_pid)
 		msg->current_char = 0;
 	}
 	if (message_printed == false)
-		send_signal(current_client_pid, SIGUSR1, SHORT_T, SERVER);
+	{
+		usleep(1);
+		kill(current_client_pid, SIGUSR1);
+	}
 	return (message_printed);
 }
 
@@ -82,7 +85,8 @@ void	message_handler(int signum, siginfo_t *info, void *context)
 	{
 		if (print_message(signum, &msg, current_client_pid) == true)
 		{
-			send_signal(current_client_pid, SIGUSR1, LONG_T, SERVER);
+			usleep(300);
+			kill(current_client_pid, SIGUSR1);
 			current_client_pid = 0;
 			g_processing_message = false;
 		}
@@ -101,8 +105,8 @@ int	main(void)
 	signal_config(message_handler);
 	while (1)
 	{
-		if (sleep(15) == 0 && g_processing_message == true)
-			send_signal(pid, SIGUSR2, LONG_T, SERVER);
+		if (sleep(30) == 0 && g_processing_message == true)
+			kill(pid, SIGUSR2);
 	}
 	return (0);
 }

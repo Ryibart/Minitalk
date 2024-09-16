@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:31:12 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/13 12:28:31 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/16 13:53:57 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,11 +51,14 @@ int	send_loop(__pid_t server_pid, unsigned char c,
 {
 	int	timeout;
 
-	timeout = TIMEOUT_COUNT;
 	if (c & 0b10000000)
-		send_signal(server_pid, SIGUSR1, SHORT_T, CLIENT);
-	else
-		send_signal(server_pid, SIGUSR2, SHORT_T, CLIENT);
+	{
+		if (kill(server_pid, SIGUSR1) == -1)
+			minitalk_print("Invalid recipient", ERROR, NULL, NULL);
+	}
+	else if (kill(server_pid, SIGUSR2) == -1)
+		minitalk_print("Invalid recipient", ERROR, NULL, BOLD);
+	sleep(1); //OPTIMIZE, BAD GUY FOUND. FIX/DELETE SEND_SIGNAL
 	timeout = TIMEOUT_COUNT;
 	while (*server_is_open == false && timeout > 0)
 	{
@@ -67,7 +70,7 @@ int	send_loop(__pid_t server_pid, unsigned char c,
 		{
 			if (--retries == 0)
 				minitalk_print("Timeout occured, server has failed", ERROR, NULL, BOLD);
-			retry_message("Recipient busy, retrying sending bit signal");
+			minitalk_print("Recipient busy, retrying sending bit signal", MESSAGE, YELLOW, BOLD_ITALIC);
 		}
 	}
 	if (*server_is_open == true)
@@ -85,8 +88,10 @@ void	send_char(__pid_t server_pid, unsigned char c, volatile sig_atomic_t *serve
 	{
 		retries = MAX_RETRY;
 		while (retries > 0)
+		{
 			if (send_loop(server_pid, c, server_is_open, &retries) == true)
 				break ;
+		}
 		c <<= 1;
 		*server_is_open = false;
 	}
