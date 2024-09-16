@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/26 18:31:12 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/16 13:53:57 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/16 17:27:51 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,31 +46,23 @@ int	minitalk_atoi(const char *str)
 	return ((int)result);
 }
 
-int	send_loop(__pid_t server_pid, unsigned char c,
-			volatile sig_atomic_t *server_is_open, int *retries)
+int	retry_loop(volatile sig_atomic_t *server_is_open, int *retries)
 {
 	int	timeout;
 
-	if (c & 0b10000000)
-	{
-		if (kill(server_pid, SIGUSR1) == -1)
-			minitalk_print("Invalid recipient", ERROR, NULL, NULL);
-	}
-	else if (kill(server_pid, SIGUSR2) == -1)
-		minitalk_print("Invalid recipient", ERROR, NULL, BOLD);
-	sleep(1); //OPTIMIZE, BAD GUY FOUND. FIX/DELETE SEND_SIGNAL
 	timeout = TIMEOUT_COUNT;
 	while (*server_is_open == false && timeout > 0)
 	{
 		usleep(RETRY_SLEEP);
-		timeout--;
 		if (*server_is_open == true)
 			break ;
-		if (timeout == 0)
+		if (--timeout == 0)
 		{
 			if (--retries == 0)
-				minitalk_print("Timeout occured, server has failed", ERROR, NULL, BOLD);
-			minitalk_print("Recipient busy, retrying sending bit signal", MESSAGE, YELLOW, BOLD_ITALIC);
+				minitalk_print("Timeout occured, server has failed",
+					ERROR, NULL, BOLD);
+			minitalk_print("Recipient busy, retrying sending bit signal",
+				MESSAGE, YELLOW, BOLD_ITALIC);
 		}
 	}
 	if (*server_is_open == true)
@@ -78,7 +70,8 @@ int	send_loop(__pid_t server_pid, unsigned char c,
 	return (false);
 }
 
-void	send_char(__pid_t server_pid, unsigned char c, volatile sig_atomic_t *server_is_open)
+void	send_char(__pid_t server_pid, unsigned char c,
+				volatile sig_atomic_t *server_is_open)
 {
 	int	bits;
 	int	retries;
@@ -89,7 +82,17 @@ void	send_char(__pid_t server_pid, unsigned char c, volatile sig_atomic_t *serve
 		retries = MAX_RETRY;
 		while (retries > 0)
 		{
-			if (send_loop(server_pid, c, server_is_open, &retries) == true)
+			if (c & 0b10000000)
+			{
+				if (kill(server_pid, SIGUSR1) == -1)
+					minitalk_print("Signal sending failed, invalid recipient",
+						ERROR, NULL, NULL);
+			}
+			else if (kill(server_pid, SIGUSR2) == -1)
+				minitalk_print("Signal sending failed, invalid recipient",
+					ERROR, NULL, NULL);
+			sleep(1);
+			if (retry_loop(server_is_open, &retries) == true)
 				break ;
 		}
 		c <<= 1;

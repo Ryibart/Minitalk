@@ -4,7 +4,7 @@
 CLIENT_PATH="../client"
 
 # Emoji to send
-EMOJI="🔗"
+EMOJI="💓"
 
 # Prompt the user to enter the server PID
 read -p "Enter the server PID: " SERVER_PID
@@ -20,7 +20,7 @@ count=0
 
 # Function to send number and emoji to the server
 send_number_and_emoji() {
-    MESSAGE="$EMOJI"
+    MESSAGE="$count $EMOJI"
     $CLIENT_PATH "$SERVER_PID" "$MESSAGE"
     # Check if the client exited with an error
     if [ $? -ne 0 ]; then
@@ -37,5 +37,5 @@ while true; do
     # Print the number and emoji sent
     echo "Sent: $count $EMOJI"
     # Sleep for 0.03 seconds between sends (adjust as needed)
-    sleep 0.02
+    sleep 0.03
 done

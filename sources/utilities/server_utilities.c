@@ -6,7 +6,7 @@
 /*   By: rtammi <rtammi@student.hive.fi>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/07/10 13:19:15 by rtammi            #+#    #+#             */
-/*   Updated: 2024/09/15 13:58:45 by rtammi           ###   ########.fr       */
+/*   Updated: 2024/09/16 17:50:50 by rtammi           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,8 @@ void	minitalk_print_pid(int pid)
 		buffer[i--] = (pid % 10) + '0';
 		pid /= 10;
 	}
-	if (write(1, &buffer[i + 1], 11 - i) == -1)
+	if (write(1, "		  "PURPLE BOLD_ITALIC"", 16) == -1
+		|| (write(1, &buffer[i + 1], 11 - i) == -1))
 		minitalk_print("PID printing failed", ERROR, NULL, BOLD);
 }
 
@@ -45,7 +46,10 @@ int	verify_message(siginfo_t *info, __pid_t *current_client_pid,
 {
 	if (*processing_message == true && *current_client_pid != info->si_pid)
 	{
-		kill(info->si_pid, SIGUSR2);
+		usleep(100);
+		if (kill(info->si_pid, SIGUSR2) == -1)
+			minitalk_print("Signal sending failed, invalid recipient",
+				ERROR, NULL, NULL);
 		return (-1);
 	}
 	else if (*processing_message == false)
@@ -53,7 +57,9 @@ int	verify_message(siginfo_t *info, __pid_t *current_client_pid,
 		*current_client_pid = info->si_pid;
 		*processing_message = true;
 		usleep(1000);
-		kill(*current_client_pid, SIGUSR1);
+		if (kill(*current_client_pid, SIGUSR1) == -1)
+			minitalk_print("Signal sending failed, invalid recipient",
+				ERROR, NULL, NULL);
 		return (-1);
 	}
 	return (1);
